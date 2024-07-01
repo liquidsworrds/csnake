@@ -28,6 +28,12 @@ struct snake {
     struct snake *next;
 };
 
+struct apple {
+    int x;
+    int y;
+
+} Apple;
+
 typedef struct snake Snake;
 
 Snake *head;
@@ -80,6 +86,47 @@ void render_grid(SDL_Renderer *renderer, int x, int y) {
     return;
 }
 
+
+void move_snake() {
+
+    int prev_x = head->x;
+    int prev_y = head->y;
+
+    switch(head->dir) {
+        case SNAKE_UP:
+            head->y--;
+            break;
+        case SNAKE_DOWN:
+            head->y++;
+            break;
+        case SNAKE_RIGHT:
+            head->x++;
+            break;
+        case SNAKE_LEFT:
+            head->x--;
+            break;
+    }
+
+    Snake *track = head;
+    if (track->next != NULL) {
+        track = track->next;
+    }
+
+    while(track != NULL) {
+        
+        int save_x = track->x;
+        int save_y = track->y;
+
+        track->x = prev_x;
+        track->y = prev_y;
+        
+        track = track->next;
+
+        prev_x = save_x;
+        prev_y = save_y;
+    }
+}
+
 void render_snake(SDL_Renderer *renderer, int x, int y) {
     
     SDL_SetRenderDrawColor(renderer, 0x00, 0xff, 0x00, 255);
@@ -100,13 +147,42 @@ void render_snake(SDL_Renderer *renderer, int x, int y) {
     return;
 }
 
+void gen_apple() {
+
+    Apple.x = rand() % GRID_SIZE;
+    Apple.y = rand() % GRID_SIZE;
+
+}
+
+void render_apple(SDL_Renderer *renderer, int x, int y) {
+    
+    SDL_SetRenderDrawColor(renderer, 0xff, 0x00, 0x00, 255);
+    SDL_Rect app;
+    
+    int apple_size = GRID_DIM / GRID_SIZE;
+    app.w = apple_size;
+    app.h = apple_size;
+
+    app.x = x + Apple.x * apple_size;
+    app.y = y + Apple.y * apple_size;
+
+    SDL_RenderFillRect(renderer, &app);
+
+}
+
 int main() {
+
+    srand(time(0));
 
     init_snake();
     grow_snake();
     grow_snake();
     grow_snake();
     grow_snake();
+
+
+        
+
 
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -155,17 +231,34 @@ int main() {
                         case SDLK_ESCAPE:
                             quit = true;
                             break;
+                        case SDLK_UP:
+                            head->dir = SNAKE_UP;
+                            break;
+                        case SDLK_DOWN:
+                            head->dir = SNAKE_DOWN;
+                            break;
+                        case SDLK_LEFT:
+                            head->dir = SNAKE_LEFT;
+                            break;
+                        case SDLK_RIGHT:
+                            head->dir = SNAKE_RIGHT;
+                            break;
                     }
             }
         }
 
         SDL_RenderClear(renderer);
         //Render loop start
+
+        move_snake();
         render_grid(renderer, grid_x, grid_y);
         render_snake(renderer, grid_x, grid_y);
+        render_apple(renderer, grid_x, grid_y);
         //Render loop end
         SDL_SetRenderDrawColor(renderer, 0x11, 0x11, 0x11, 255);
         SDL_RenderPresent(renderer);
+
+        SDL_Delay(200);
     }
 
     SDL_DestroyRenderer(renderer);
