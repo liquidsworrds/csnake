@@ -52,9 +52,28 @@ void init_snake() {
 }
 
 void grow_snake() {
+
     Snake *new = malloc(sizeof(Snake));
-    new->x = tail->x;
-    new->y = tail->y - 1;
+
+    switch(tail->dir) {
+        case SNAKE_UP:
+            new->x = tail->x;
+            new->y = tail->y + 1;
+            break;
+        case SNAKE_DOWN:
+            new->x = tail->x;
+            new->y = tail->y - 1;
+            break;
+        case SNAKE_LEFT:
+            new->x = tail->x + 1;
+            new->y = tail->y;
+            break;
+        case SNAKE_RIGHT:
+            new->x = tail->x - 1;
+            new->y = tail->y;
+            break;
+    }
+
     new->dir = tail->dir;
 
     new->next = NULL;
@@ -68,7 +87,9 @@ void grow_snake() {
 
 void render_grid(SDL_Renderer *renderer, int x, int y) {
 
-    SDL_SetRenderDrawColor(renderer, 0x55, 0x55, 0x55, 255);
+    SDL_SetRenderDrawColor(renderer, 0x55, 0x55, 0xff, 255);
+
+#if 0
     int cell_size = GRID_DIM / GRID_SIZE;
 
     SDL_Rect cell;
@@ -83,6 +104,16 @@ void render_grid(SDL_Renderer *renderer, int x, int y) {
             SDL_RenderDrawRect(renderer, &cell);
         }
     }
+#else 
+    SDL_Rect outline;
+    outline.x = x;
+    outline.y = y;
+    outline.w = GRID_DIM;
+    outline.h = GRID_DIM;
+
+    SDL_RenderDrawRect(renderer, &outline);
+
+#endif
     return;
 }
 
@@ -91,6 +122,7 @@ void move_snake() {
 
     int prev_x = head->x;
     int prev_y = head->y;
+    int prev_dir = head->dir;
 
     switch(head->dir) {
         case SNAKE_UP:
@@ -116,16 +148,39 @@ void move_snake() {
         
         int save_x = track->x;
         int save_y = track->y;
+        int save_dir = track->dir;
 
         track->x = prev_x;
         track->y = prev_y;
+        track->dir = prev_dir;
         
         track = track->next;
 
         prev_x = save_x;
         prev_y = save_y;
+        prev_dir = save_dir;
     }
 }
+
+void reset_snake() {
+
+    Snake *track = head;
+    Snake *temp;
+
+    while (track != NULL) {
+        temp = track;
+        track = track->next;
+        free(temp);
+    }
+
+    init_snake();
+    grow_snake();
+    grow_snake();
+    grow_snake();
+
+    return;
+}
+
 
 void render_snake(SDL_Renderer *renderer, int x, int y) {
     
@@ -149,8 +204,24 @@ void render_snake(SDL_Renderer *renderer, int x, int y) {
 
 void gen_apple() {
 
-    Apple.x = rand() % GRID_SIZE;
-    Apple.y = rand() % GRID_SIZE;
+    bool in_snake;
+
+    do {
+        in_snake = false;
+        Apple.x = rand() % GRID_SIZE;
+        Apple.y = rand() % GRID_SIZE;
+
+        Snake *track = head;
+
+        while (track != NULL) {
+            if (track->x == Apple.x && track->y == Apple.y) {
+                in_snake = true;
+            }
+
+            track = track->next;
+        }
+    } 
+    while(in_snake);
 
 }
 
@@ -170,6 +241,38 @@ void render_apple(SDL_Renderer *renderer, int x, int y) {
 
 }
 
+void detect_apple() {
+
+    if (head->x == Apple.x && head->y == Apple.y) {
+        gen_apple();
+        grow_snake();
+    }
+
+    return;
+}
+
+void detect_crash() {
+
+    if (head->x < 0 || head->x >= GRID_SIZE || head->y < 0  || head->y >= GRID_SIZE) {
+        reset_snake();
+    }
+
+    Snake *track = head;
+
+    if (track->next != NULL) {
+        track = track->next;
+    }
+
+    while(track != NULL) {
+        if (track->x == head->x && track->y == head->y) {
+            reset_snake();
+        }
+        track = track->next;
+    }
+
+}
+
+
 int main() {
 
     srand(time(0));
@@ -178,11 +281,6 @@ int main() {
     grow_snake();
     grow_snake();
     grow_snake();
-    grow_snake();
-
-
-        
-
 
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -251,6 +349,9 @@ int main() {
         //Render loop start
 
         move_snake();
+        detect_apple();
+        detect_crash();
+
         render_grid(renderer, grid_x, grid_y);
         render_snake(renderer, grid_x, grid_y);
         render_apple(renderer, grid_x, grid_y);
@@ -258,13 +359,11 @@ int main() {
         SDL_SetRenderDrawColor(renderer, 0x11, 0x11, 0x11, 255);
         SDL_RenderPresent(renderer);
 
-        SDL_Delay(200);
+        SDL_Delay(100);
     }
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
                                                
-
-    return 0;
 }
